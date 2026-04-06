@@ -23,7 +23,7 @@ service cloud.firestore {
     }
 
     function hasRole(role) {
-      return isAuthenticated() && getUserData().role == role;
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == role;
     }
 
     function isSuperAdmin() {
@@ -51,21 +51,25 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId) && (
+        request.resource.data.role == 'docente' || 
+        (request.auth.token.email == 'mark.romero.dev@gmail.com' && request.resource.data.role == 'director') ||
+        isSuperAdmin()
+      );
       allow update: if isDirector() || (isOwner(userId) && request.resource.data.role == resource.data.role);
     }
 
     match /documents/{docId} {
       allow read: if isAuthenticated();
-      allow create: if isMesaPartes();
-      allow update: if isMesaPartes();
-      allow delete: if isDirector();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isDirector() || (isAuthenticated() && resource.data.uploadedById == request.auth.uid);
     }
 
     match /tramites/{tramiteId} {
       allow read: if isAuthenticated();
-      allow create: if isMesaPartes();
-      allow update: if isMesaPartes() || (isDocente() && resource.data.asignadoAId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
       allow delete: if isDirector();
     }
   }
