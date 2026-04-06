@@ -47,6 +47,13 @@ VITE_R2_BUCKET_NAME="nombre_del_bucket"
 VITE_R2_PUBLIC_URL="url_publica_del_bucket"
 ```
 
+### Solución a Errores Comunes de Autenticación
+Si al intentar ingresar recibes el error `FirebaseError: Firebase: Error (auth/unauthorized-domain)`, sigue estos pasos:
+1. Ve a tu [Firebase Console](https://console.firebase.google.com/).
+2. Selecciona tu proyecto.
+3. Ve a **Authentication** -> **Settings** -> **Authorized domains**.
+4. Haz clic en **Add domain** y añade `chitidocs.vercel.app` (o el dominio donde estés desplegando).
+
 ### Instalación
 1. Clona el repositorio.
 2. Instala las dependencias: `npm install`
