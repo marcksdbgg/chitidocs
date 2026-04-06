@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "title": "Usuario",
+      "description": "Perfil de usuario del sistema",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "director", "subdirector", "mesa_partes", "secretaria", "jefe_area", "docente", "auditor"] },
+        "photoURL": { "type": "string" },
+        "institutionId": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Document": {
+      "title": "Documento",
+      "description": "Archivo digitalizado con metadata de IA o FUT Digital",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tramiteId": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "fileType": { "type": "string" },
+        "metadata": { 
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "type": { "type": "string" },
+            "date": { "type": "string" },
+            "year": { "type": "number" },
+            "month": { "type": "number" },
+            "sender": { "type": "string" },
+            "recipient": { "type": "string" },
+            "studentName": { "type": "string" },
+            "teacherName": { "type": "string" },
+            "grade": { "type": "string" },
+            "section": { "type": "string" },
+            "physicalLocation": { "type": "string" },
+            "involved": { "type": "array", "items": { "type": "string" } },
+            "summary": { "type": "string" },
+            "isSensitive": { "type": "boolean" },
+            "confidence": { "type": "number" },
+            "embedding": { "type": "array", "items": { "type": "number" } }
+          }
+        },
+        "futData": {
+          "type": "object",
+          "properties": {
+            "dependencia": { "type": "string" },
+            "tramiteSolicitado": { "type": "string" },
+            "nombres": { "type": "string" },
+            "apellidos": { "type": "string" },
+            "dni": { "type": "string" },
+            "domicilio": { "type": "string" },
+            "telefono": { "type": "string" },
+            "correo": { "type": "string" },
+            "fundamentacion": { "type": "string" },
+            "anexos": { "type": "string" }
+          }
+        },
+        "uploadedById": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tramiteId", "fileUrl", "uploadedById"]
+    },
+    "Tramite": {
+      "title": "Trámite / Expediente",
+      "description": "Seguimiento de un trámite administrativo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "numero": { "type": "string" },
+        "asunto": { "type": "string" },
+        "estado": { "type": "string", "enum": ["borrador", "presentado", "registrado", "derivado", "en_evaluacion", "observado", "en_subsanacion", "resuelto", "archivado", "improcedente", "rechazado", "cancelado"] },
+        "solicitanteNombre": { "type": "string" },
+        "solicitanteDni": { "type": "string" },
+        "asignadoAId": { "type": "string" },
+        "institucionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["numero", "asunto", "estado", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "Perfiles de usuario"
+    },
+    "/documents/{docId}": {
+      "schema": "Document",
+      "description": "Documentos y su metadata"
+    },
+    "/tramites/{tramiteId}": {
+      "schema": "Tramite",
+      "description": "Expedientes de la mesa de partes"
+    }
+  }
+}

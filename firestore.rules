@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, email, role (superadmin, director, subdirector, mesa_partes, secretaria, jefe_area, docente, auditor), institutionId
+    //
+    // Collection: documents
+    // Fields: tramiteId, fileUrl, metadata (map), uploadedById, createdAt
+    //
+    // Collection: tramites
+    // Fields: numero, asunto, estado, solicitanteNombre, asignadoAId, institucionId
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        hasRole('superadmin') || 
+        (request.auth.token.email == 'mark.romero.dev@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isDirector() {
+      return isSuperAdmin() || hasRole('director');
+    }
+
+    function isMesaPartes() {
+      return isDirector() || hasRole('subdirector') || hasRole('mesa_partes') || hasRole('secretaria');
+    }
+
+    function isDocente() {
+      return hasRole('docente') || hasRole('jefe_area');
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isDirector() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+    }
+
+    match /documents/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isMesaPartes();
+      allow update: if isMesaPartes();
+      allow delete: if isDirector();
+    }
+
+    match /tramites/{tramiteId} {
+      allow read: if isAuthenticated();
+      allow create: if isMesaPartes();
+      allow update: if isMesaPartes() || (isDocente() && resource.data.asignadoAId == request.auth.uid);
+      allow delete: if isDirector();
+    }
+  }
+}
