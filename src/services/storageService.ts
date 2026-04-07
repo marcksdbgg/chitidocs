@@ -1,43 +1,46 @@
 /**
  * Servicio de Almacenamiento (Storage)
- * Preparado para Cloudflare R2 (Compatible con S3)
+ * Conectado a Cloudflare R2 a través de Vercel API
  */
 
 export async function uploadToR2(file: File): Promise<string> {
-  // ============================================================================
-  // IMPLEMENTACIÓN REAL PARA CLOUDFLARE R2 (S3)
-  // ============================================================================
-  // En un entorno de producción, NO debes exponer tus credenciales de S3 en el frontend.
-  // El flujo correcto es:
-  // 1. El frontend solicita una "Pre-signed URL" a tu backend (Node.js/Express).
-  // 2. El backend usa el SDK de AWS (aws-sdk-v3) para generar la URL con permisos de PUT.
-  // 3. El frontend hace un fetch(PUT) directamente a esa URL de Cloudflare R2.
-  // 
-  // Ejemplo de código real:
-  // 
-  // const response = await fetch('/api/get-presigned-url', {
-  //   method: 'POST',
-  //   body: JSON.stringify({ fileName: file.name, fileType: file.type })
-  // });
-  // const { uploadUrl, publicUrl } = await response.json();
-  // 
-  // await fetch(uploadUrl, {
-  //   method: 'PUT',
-  //   body: file,
-  //   headers: { 'Content-Type': file.type }
-  // });
-  // 
-  // return publicUrl;
-  // ============================================================================
+  try {
+    // 1. Solicitar una Pre-signed URL a nuestra API interna
+    const response = await fetch('/api/presigned', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type
+      })
+    });
 
-  console.log("Simulando subida a Cloudflare R2 para:", file.name);
-  
-  // Simulamos el tiempo de subida
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Retornamos una URL ficticia de R2
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      resolve(`https://pub-edudoc-r2.r2.dev/${Date.now()}-${safeName}`);
-    }, 1500);
-  });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Fallo al obtener la URL de subida');
+    }
+
+    const { uploadUrl, publicUrl } = await response.json();
+
+    // 2. Subir el archivo directamente a Cloudflare R2 usando la URL firmada
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('Fallo al subir el archivo a Cloudflare R2');
+    }
+
+    // 3. Retornar la URL pública donde el archivo será accesible
+    return publicUrl;
+  } catch (error) {
+    console.error("Error en uploadToR2:", error);
+    throw error;
+  }
 }

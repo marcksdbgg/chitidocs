@@ -73,7 +73,7 @@ export default function MesaDePartes() {
     setAnalysis(null);
 
     try {
-      // Subida real a Cloudflare R2 (Simulada por ahora)
+      // Subida real a Cloudflare R2
       const r2Url = await uploadToR2(file);
       
       setFormData(prev => ({ 
