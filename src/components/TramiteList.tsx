@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, getDocs, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, updateDoc, doc, getDocs, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   FileText, 
   Clock, 
@@ -62,23 +62,51 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
   }, [selectedTramite]);
 
   const updateStatus = async (tramiteId: string, newStatus: string) => {
-    await updateDoc(doc(db, 'tramites', tramiteId), {
-      estado: newStatus,
-      updatedAt: new Date().toISOString()
-    });
+    const current = tramites.find(t => t.id === tramiteId);
+    try {
+      await updateDoc(doc(db, 'tramites', tramiteId), {
+        estado: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      await addDoc(collection(db, 'audit_logs'), {
+        type: 'tramite_status_changed',
+        tramiteId,
+        before: { estado: current?.estado || null },
+        after: { estado: newStatus },
+        actorId: userId,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('No se pudo actualizar el estado del trámite.');
+    }
   };
 
   const assignTo = async (tramiteId: string, assignedUserId: string) => {
-    await updateDoc(doc(db, 'tramites', tramiteId), {
-      asignadoA: assignedUserId,
-      estado: 'derivado',
-      updatedAt: new Date().toISOString()
-    });
+    const current = tramites.find(t => t.id === tramiteId);
+    try {
+      await updateDoc(doc(db, 'tramites', tramiteId), {
+        asignadoAId: assignedUserId,
+        estado: 'derivado',
+        updatedAt: serverTimestamp()
+      });
+      await addDoc(collection(db, 'audit_logs'), {
+        type: 'tramite_assigned',
+        tramiteId,
+        before: { asignadoAId: current?.asignadoAId || null },
+        after: { asignadoAId: assignedUserId },
+        actorId: userId,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error assigning tramite:', error);
+      alert('No se pudo derivar el trámite.');
+    }
   };
 
   const filteredTramites = tramites.filter(t => {
     if (filter === 'todos') return true;
-    if (filter === 'mis-tramites') return t.asignadoA === userId;
+    if (filter === 'mis-tramites') return t.asignadoAId === userId;
     return t.estado === filter;
   });
 

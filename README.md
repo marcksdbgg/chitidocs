@@ -40,12 +40,17 @@ El sistema maneja los siguientes roles, protegidos tanto en la interfaz de usuar
 Debes configurar las siguientes variables de entorno:
 ```env
 GEMINI_API_KEY="tu_api_key_de_gemini"
-VITE_R2_ACCOUNT_ID="tu_account_id"
-VITE_R2_ACCESS_KEY_ID="tu_access_key"
-VITE_R2_SECRET_ACCESS_KEY="tu_secret_key"
-VITE_R2_BUCKET_NAME="nombre_del_bucket"
-VITE_R2_PUBLIC_URL="url_publica_del_bucket"
+R2_ACCOUNT_ID="tu_account_id"
+R2_ACCESS_KEY_ID="tu_access_key"
+R2_SECRET_ACCESS_KEY="tu_secret_key"
+R2_BUCKET_NAME="nombre_del_bucket"
+R2_PUBLIC_URL="url_publica_del_bucket"
+FIREBASE_PROJECT_ID="tu_firebase_project_id"
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@tu-proyecto.iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
+
+> `GEMINI_API_KEY` se usa únicamente en APIs backend (`/api/*`), ya no se expone en el frontend.
 
 ### Solución a Errores Comunes de Autenticación
 Si al intentar ingresar recibes el error `FirebaseError: Firebase: Error (auth/unauthorized-domain)`, sigue estos pasos:

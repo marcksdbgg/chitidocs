@@ -1,19 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    // Collection: users
-    // Fields: uid, email, role (superadmin, director, subdirector, mesa_partes, secretaria, jefe_area, docente, auditor), institutionId
-    //
-    // Collection: documents
-    // Fields: tramiteId, fileUrl, metadata (map), uploadedById, createdAt
-    //
-    // Collection: tramites
-    // Fields: numero, asunto, estado, solicitanteNombre, asignadoAId, institucionId
-    // ===============================================================
-
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -37,6 +24,10 @@ service cloud.firestore {
       return isSuperAdmin() || hasRole('director');
     }
 
+    function isAdminOrDirector() {
+      return isSuperAdmin() || hasRole('director') || hasRole('subdirector');
+    }
+
     function isMesaPartes() {
       return isDirector() || hasRole('subdirector') || hasRole('mesa_partes') || hasRole('secretaria');
     }
@@ -49,6 +40,33 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function userInstitution() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? getUserData().institutionId
+        : null;
+    }
+
+    function sameInstitution(existingInstitutionId) {
+      return userInstitution() == null || existingInstitutionId == null || existingInstitutionId == userInstitution();
+    }
+
+    function hasRequiredTramiteFields() {
+      return request.resource.data.numero is string &&
+             request.resource.data.asunto is string &&
+             request.resource.data.solicitanteNombre is string &&
+             request.resource.data.estado is string &&
+             request.resource.data.createdAt != null &&
+             request.resource.data.updatedAt != null;
+    }
+
+    function hasRequiredDocumentFields() {
+      return request.resource.data.fileName is string &&
+             request.resource.data.fileUrl is string &&
+             request.resource.data.fileType is string &&
+             request.resource.data.uploadedById == request.auth.uid &&
+             request.resource.data.createdAt != null;
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isOwner(userId) && (
@@ -56,21 +74,41 @@ service cloud.firestore {
         (request.auth.token.email == 'mark.romero.dev@gmail.com' && request.resource.data.role == 'director') ||
         isSuperAdmin()
       );
-      allow update: if isDirector() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+      allow update: if (isDirector() && sameInstitution(resource.data.institutionId)) ||
+                    (isOwner(userId) && request.resource.data.role == resource.data.role);
     }
 
     match /documents/{docId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isDirector() || (isAuthenticated() && resource.data.uploadedById == request.auth.uid);
+      allow read: if isAuthenticated() && sameInstitution(resource.data.institucionId);
+      allow create: if isMesaPartes() && hasRequiredDocumentFields() && sameInstitution(request.resource.data.institucionId);
+      allow update: if (isMesaPartes() || (isAuthenticated() && resource.data.uploadedById == request.auth.uid)) &&
+                    sameInstitution(resource.data.institucionId) &&
+                    sameInstitution(request.resource.data.institucionId);
+      allow delete: if isDirector() || (isAuthenticated() && resource.data.uploadedById == request.auth.uid && sameInstitution(resource.data.institucionId));
     }
 
     match /tramites/{tramiteId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isDirector();
+      allow read: if isAuthenticated() && sameInstitution(resource.data.institucionId);
+      allow create: if isMesaPartes() && hasRequiredTramiteFields() && sameInstitution(request.resource.data.institucionId);
+      allow update: if (
+        isMesaPartes() ||
+        (isDocente() && (
+          resource.data.asignadoAId == request.auth.uid ||
+          request.resource.data.asignadoAId == request.auth.uid
+        ))
+      ) &&
+      sameInstitution(resource.data.institucionId) &&
+      sameInstitution(request.resource.data.institucionId);
+      allow delete: if isDirector() && sameInstitution(resource.data.institucionId);
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdminOrDirector();
+      allow create: if isAuthenticated() &&
+                    request.resource.data.actorId == request.auth.uid &&
+                    request.resource.data.type is string &&
+                    request.resource.data.createdAt != null;
+      allow update, delete: if false;
     }
   }
 }

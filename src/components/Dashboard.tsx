@@ -78,7 +78,7 @@ export default function Dashboard({ userRole }: { userRole: string | null }) {
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900">{tramite.asunto}</p>
-                    <p className="text-xs text-slate-500">Exp. {tramite.numero} • {tramite.solicitante}</p>
+                    <p className="text-xs text-slate-500">Exp. {tramite.numero} • {tramite.solicitanteNombre}</p>
                   </div>
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${
