@@ -6,6 +6,14 @@ export const config = {
   runtime: 'nodejs',
 };
 
+function getRequiredEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is not configured`);
+  }
+  return value;
+}
+
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return jsonError('Method not allowed', 405);
@@ -40,20 +48,23 @@ export default async function handler(req: Request) {
       return jsonError('Unsupported file type', 400);
     }
 
+    const accountId = getRequiredEnv('R2_ACCOUNT_ID');
+    const accessKeyId = getRequiredEnv('R2_ACCESS_KEY_ID');
+    const secretAccessKey = getRequiredEnv('R2_SECRET_ACCESS_KEY');
+    const bucketName = getRequiredEnv('R2_BUCKET_NAME');
+    const publicBaseUrl = getRequiredEnv('R2_PUBLIC_URL').replace(/\/+$/, '');
+
     const s3Client = new S3Client({
       region: "auto",
-      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+        accessKeyId,
+        secretAccessKey,
       },
     });
 
-    const key = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const bucketName = process.env.R2_BUCKET_NAME || "";
-    if (!bucketName) {
-      return jsonError('Server storage is not configured', 500);
-    }
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const key = `${user.uid}/${Date.now()}-${safeFileName}`;
 
     const command = new PutObjectCommand({
       Bucket: bucketName,
@@ -66,10 +77,6 @@ export default async function handler(req: Request) {
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 60 });
 
     // Construir la URL pública (usando el dominio personalizado o de R2)
-    const publicBaseUrl = process.env.R2_PUBLIC_URL;
-    if (!publicBaseUrl) {
-      return jsonError('Storage service is not properly configured', 500);
-    }
     const publicUrl = `${publicBaseUrl}/${key}`;
 
     return new Response(JSON.stringify({ uploadUrl, publicUrl, key }), {
@@ -79,7 +86,7 @@ export default async function handler(req: Request) {
   } catch (error) {
     console.error('Error generating pre-signed URL:', error);
     const status = (error as any)?.status || 500;
-    const message = status === 401 ? 'Unauthorized' : 'Internal server error';
+    const message = status === 401 ? 'Unauthorized' : (error as Error)?.message || 'Internal server error';
     return jsonError(message, status);
   }
 }

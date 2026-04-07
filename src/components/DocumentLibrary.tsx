@@ -49,6 +49,13 @@ export default function DocumentLibrary() {
     return () => unsubscribe();
   }, []);
 
+  const formatDocumentDate = (value: any) => {
+    if (!value) return 'Sin fecha';
+    if (typeof value?.toDate === 'function') return value.toDate().toLocaleDateString();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? 'Sin fecha' : parsed.toLocaleDateString();
+  };
+
   const connectDrive = async () => {
     if (isConnectingDrive) return;
     setIsConnectingDrive(true);
@@ -63,7 +70,9 @@ export default function DocumentLibrary() {
         setShowDrivePicker(true);
       }
     } catch (error: any) {
-      if (error.code === 'auth/popup-blocked') {
+      if (error.code === 'auth/unauthorized-domain') {
+        alert(`Firebase todavía no autoriza el dominio ${window.location.hostname}. Agrega ese dominio en Firebase Console > Authentication > Settings > Authorized domains.`);
+      } else if (error.code === 'auth/popup-blocked') {
         console.error("Drive connection failed: popup blocked", error);
         alert("El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.");
       } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
@@ -369,7 +378,7 @@ export default function DocumentLibrary() {
                 <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 mt-auto">
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
                     <Calendar className="w-3 h-3 shrink-0" /> 
-                    <span className="truncate">{doc.metadata?.date || new Date(doc.createdAt?.toDate()).toLocaleDateString() || 'Sin fecha'}</span>
+                    <span className="truncate">{doc.metadata?.date || formatDocumentDate(doc.createdAt)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
                     <User className="w-3 h-3 shrink-0" /> 

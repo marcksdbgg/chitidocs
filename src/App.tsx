@@ -3,22 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Search, 
-  PlusCircle, 
-  LogOut, 
-  User as UserIcon,
+import {
+  AlertCircle,
+  FileText,
+  FolderUp,
+  LayoutDashboard,
   Loader2,
+  LogOut,
+  PlusCircle,
   School,
-  Users
+  Search,
+  User as UserIcon,
+  Users,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { cn } from './lib/utils';
 
 // Components
@@ -28,13 +30,32 @@ import DocumentSearch from './components/DocumentSearch';
 import TramiteList from './components/TramiteList';
 import UserManagement from './components/UserManagement';
 import DocumentLibrary from './components/DocumentLibrary';
-import { FolderUp } from 'lucide-react';
 
 type View = 'dashboard' | 'mesa-de-partes' | 'search' | 'tramites' | 'users' | 'library';
+
+function getLoginErrorMessage(error: any) {
+  const hostname = window.location.hostname;
+
+  if (error?.code === 'auth/unauthorized-domain') {
+    return `Firebase todavía no autoriza el dominio ${hostname}. Agrega ese dominio en Firebase Console > Authentication > Settings > Authorized domains.`;
+  }
+
+  if (error?.code === 'auth/popup-blocked') {
+    return 'El navegador bloqueó la ventana emergente. Permite popups para este sitio e inténtalo otra vez.';
+  }
+
+  if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+    return 'El inicio de sesión fue cancelado antes de completarse.';
+  }
+
+  return 'No se pudo iniciar sesión con Google. Revisa la configuración de Firebase Auth e inténtalo de nuevo.';
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('dashboard');
 
@@ -71,11 +92,22 @@ export default function App() {
   }, []);
 
   const login = async () => {
+    if (isLoggingIn) {
+      return;
+    }
+
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
     try {
+      setIsLoggingIn(true);
+      setAuthError(null);
       await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error('Login failed:', error);
+      setAuthError(getLoginErrorMessage(error));
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -103,12 +135,21 @@ export default function App() {
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">EduDoc Perú</h1>
           <p className="text-slate-500 mb-8">Sistema de Gestión Documental Inteligente para Instituciones Educativas</p>
+          {authError && (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-800">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            </div>
+          )}
           <button
             onClick={login}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-xl transition-all shadow-sm"
+            disabled={isLoggingIn}
+            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 font-semibold py-3 px-4 rounded-xl transition-all shadow-sm"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-            Ingresar con Google
+            {isLoggingIn ? 'Ingresando...' : 'Ingresar con Google'}
           </button>
         </motion.div>
       </div>

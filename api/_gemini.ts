@@ -1,6 +1,13 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+function getAI() {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured');
+  }
+
+  return new GoogleGenAI({ apiKey });
+}
 
 export interface ServerDocumentMetadata {
   title?: string;
@@ -22,6 +29,7 @@ export interface ServerDocumentMetadata {
 }
 
 export async function analyzeDocumentServer(base64Data: string, mimeType: string, fileName: string): Promise<ServerDocumentMetadata | null> {
+  const ai = getAI();
   const prompt = `Eres un experto auditor de UGEL y gestión documental en Perú.
 Analiza este documento (${fileName}) y extrae la siguiente información técnica para su indexación en una mesa de partes:
 
@@ -98,6 +106,7 @@ Responde estrictamente en formato JSON.`;
 }
 
 export async function generateEmbeddingServer(text: string): Promise<number[]> {
+  const ai = getAI();
   try {
     const result = await ai.models.embedContent({
       model: 'gemini-embedding-2-preview',

@@ -62,6 +62,12 @@ function initAdmin() {
     return;
   }
 
+  if (process.env.VERCEL === '1') {
+    throw new Error(
+      'Firebase Admin is not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in the deployment environment.'
+    );
+  }
+
   initializeApp({
     credential: applicationDefault(),
   });

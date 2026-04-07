@@ -25,7 +25,7 @@ export default async function handler(req: Request) {
     });
   } catch (error: any) {
     const status = error?.status || 500;
-    const message = status === 401 ? 'Unauthorized' : 'Internal server error';
+    const message = status === 401 ? 'Unauthorized' : error?.message || 'Internal server error';
     return jsonError(message, status);
   }
 }
