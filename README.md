@@ -26,6 +26,7 @@ El sistema maneja los siguientes roles, protegidos tanto en la interfaz de usuar
 *   **Superadmin / Director:** Acceso total al sistema, gestión de usuarios y eliminación de registros.
 *   **Mesa de Partes / Subdirector / Secretaria:** Creación y actualización de trámites y documentos.
 *   **Docente / Jefe de Área:** Visualización de documentos y actualización de trámites asignados a su persona.
+*   **Auditor (rol básico inicial):** Sin acceso operativo. Debe ser promovido por el Director a un rol funcional.
 
 ## Configuración y Despliegue
 

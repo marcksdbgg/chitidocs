@@ -28,6 +28,10 @@ service cloud.firestore {
       return isSuperAdmin() || hasRole('director') || hasRole('subdirector');
     }
 
+    function canOperate() {
+      return isDirector() || hasRole('subdirector') || hasRole('mesa_partes') || hasRole('secretaria') || hasRole('docente') || hasRole('jefe_area');
+    }
+
     function isMesaPartes() {
       return isDirector() || hasRole('subdirector') || hasRole('mesa_partes') || hasRole('secretaria');
     }
@@ -38,16 +42,6 @@ service cloud.firestore {
 
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function userInstitution() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        ? getUserData().institutionId
-        : null;
-    }
-
-    function sameInstitution(existingInstitutionId) {
-      return userInstitution() == null || existingInstitutionId == null || existingInstitutionId == userInstitution();
     }
 
     function hasRequiredTramiteFields() {
@@ -71,37 +65,34 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if (isAuthenticated() && isOwner(userId)) || isDirector();
       allow create: if isAuthenticated() && isOwner(userId) && (
-        request.resource.data.role == 'docente' || 
+        request.resource.data.role == 'auditor' || 
         (request.auth.token.email == 'mark.romero.dev@gmail.com' && request.resource.data.role == 'director') ||
         isSuperAdmin()
       );
-      allow update: if (isDirector() && sameInstitution(resource.data.institutionId)) ||
+      allow update: if (isDirector()) ||
                     (isOwner(userId) && request.resource.data.role == resource.data.role);
     }
 
     match /documents/{docId} {
-      allow read: if isAuthenticated() && sameInstitution(resource.data.institucionId);
-      allow create: if isMesaPartes() && hasRequiredDocumentFields() && sameInstitution(request.resource.data.institucionId);
+      allow read: if isAuthenticated() && canOperate();
+      allow create: if isMesaPartes() && hasRequiredDocumentFields();
       allow update: if (isMesaPartes() || (isAuthenticated() && resource.data.uploadedById == request.auth.uid)) &&
-                    sameInstitution(resource.data.institucionId) &&
-                    sameInstitution(request.resource.data.institucionId);
-      allow delete: if isDirector() || (isAuthenticated() && resource.data.uploadedById == request.auth.uid && sameInstitution(resource.data.institucionId));
+                    canOperate();
+      allow delete: if isDirector() || (isAuthenticated() && resource.data.uploadedById == request.auth.uid);
     }
 
     match /tramites/{tramiteId} {
-      allow read: if isAuthenticated() && sameInstitution(resource.data.institucionId);
-      allow create: if isMesaPartes() && hasRequiredTramiteFields() && sameInstitution(request.resource.data.institucionId);
+      allow read: if isAuthenticated() && canOperate();
+      allow create: if isMesaPartes() && hasRequiredTramiteFields();
       allow update: if (
         isMesaPartes() ||
         (isDocente() && (
           resource.data.asignadoAId == request.auth.uid
         ))
-      ) &&
-      sameInstitution(resource.data.institucionId) &&
-      sameInstitution(request.resource.data.institucionId);
-      allow delete: if isDirector() && sameInstitution(resource.data.institucionId);
+      );
+      allow delete: if isDirector();
     }
 
     match /audit_logs/{logId} {

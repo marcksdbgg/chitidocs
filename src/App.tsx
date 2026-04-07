@@ -46,7 +46,7 @@ export default function App() {
         const userSnap = await getDoc(userRef);
         
         if (!userSnap.exists()) {
-          const defaultRole = currentUser.email === 'mark.romero.dev@gmail.com' ? 'director' : 'docente';
+          const defaultRole = currentUser.email === 'mark.romero.dev@gmail.com' ? 'director' : 'auditor';
           const newUser = {
             uid: currentUser.uid,
             email: currentUser.email,
@@ -80,6 +80,7 @@ export default function App() {
   };
 
   const logout = () => signOut(auth);
+  const isBasicRole = userRole === 'auditor';
 
   if (loading) {
     return (
@@ -114,7 +115,31 @@ export default function App() {
     );
   }
 
-    const navItems = [
+  if (isBasicRole) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acceso pendiente de asignación</h1>
+          <p className="text-slate-600 mb-6">
+            Tu cuenta fue creada con rol básico y no tiene acceso operativo aún. El Director debe asignarte un rol para habilitar módulos del sistema.
+          </p>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
+            <p className="text-sm text-slate-700"><span className="font-semibold">Usuario:</span> {user.email}</p>
+            <p className="text-sm text-slate-700"><span className="font-semibold">Rol actual:</span> {userRole}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all text-sm font-medium border border-slate-200"
+          >
+            <LogOut className="w-4 h-4" />
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'tramites', label: 'Trámites', icon: FileText },
     { id: 'search', label: 'Búsqueda IA', icon: Search },
@@ -202,7 +227,7 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeView === 'dashboard' && <Dashboard userRole={userRole} />}
+              {activeView === 'dashboard' && <Dashboard userRole={userRole} onNavigateToTramites={() => setActiveView('tramites')} />}
               {activeView === 'tramites' && <TramiteList userRole={userRole} userId={user.uid} />}
               {activeView === 'search' && <DocumentSearch />}
               {activeView === 'library' && <DocumentLibrary />}

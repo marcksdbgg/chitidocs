@@ -50,14 +50,17 @@ Los roles están definidos en `src/types/index.ts` y protegidos tanto en el Fron
     *   Pueden ver la vista "Mesa de Partes".
     *   Pueden crear y actualizar trámites y documentos.
 *   **Docente / Jefe de Área:**
-    *   Rol por defecto para nuevos usuarios.
+    *   Rol operativo asignado por Dirección.
     *   Solo pueden actualizar trámites que les han sido asignados explícitamente (`resource.data.asignadoAId == request.auth.uid`).
+*   **Auditor:**
+    *   Rol por defecto para nuevos usuarios.
+    *   Sin acceso operativo hasta que Dirección asigne un rol funcional.
 
 *Nota: El usuario `mark.romero.dev@gmail.com` tiene el rol de `director` asignado por defecto en el código y en las reglas de Firestore para propósitos de bootstrapping.*
 
 ## 4. Flujos de la Aplicación
 
-1.  **Autenticación:** El usuario ingresa con Google (`signInWithPopup`). Si es su primera vez, se crea un registro en la colección `users` de Firestore con el rol `docente`.
+1.  **Autenticación:** El usuario ingresa con Google (`signInWithPopup`). Si es su primera vez, se crea un registro en la colección `users` de Firestore con el rol `auditor`.
 2.  **Mesa de Partes (Ingreso):** El personal autorizado registra un trámite, sube un archivo (PDF/Imagen), el cual se sube a R2. Gemini analiza el archivo para extraer metadatos automáticamente. Se crean registros en las colecciones `tramites` y `documents`.
 3.  **Gestión de Trámites:** En la vista "Trámites", los usuarios pueden filtrar por estado, ver los documentos adjuntos, cambiar el estado del trámite (ej. de "registrado" a "en_evaluacion") y derivarlo (asignarlo) a otro usuario.
 4.  **Biblioteca e Importación (Drive):** Los usuarios pueden ver todos los documentos. Pueden usar el botón "Conectar Drive" que utiliza la API de Google Drive para listar archivos, descargarlos, subirlos a R2, analizarlos con Gemini y guardarlos en Firestore.
