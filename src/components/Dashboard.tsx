@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, limit, orderBy } from 'firebase/firestore';
 import { 
   FileText, 
   Clock, 
@@ -9,7 +9,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 
-export default function Dashboard({ userRole }: { userRole: string | null }) {
+export default function Dashboard({ onNavigateToTramites }: { userRole: string | null; onNavigateToTramites: () => void }) {
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -67,7 +67,7 @@ export default function Dashboard({ userRole }: { userRole: string | null }) {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-bold text-slate-900">Trámites Recientes</h3>
-            <button className="text-blue-600 text-sm font-semibold hover:underline">Ver todos</button>
+            <button onClick={onNavigateToTramites} className="text-blue-600 text-sm font-semibold hover:underline">Ver todos</button>
           </div>
           <div className="divide-y divide-slate-100">
             {stats.recent.map((tramite) => (
@@ -78,7 +78,7 @@ export default function Dashboard({ userRole }: { userRole: string | null }) {
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900">{tramite.asunto}</p>
-                    <p className="text-xs text-slate-500">Exp. {tramite.numero} • {tramite.solicitante}</p>
+                    <p className="text-xs text-slate-500">Exp. {tramite.numero} • {tramite.solicitanteNombre}</p>
                   </div>
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${
@@ -105,15 +105,15 @@ export default function Dashboard({ userRole }: { userRole: string | null }) {
             <div className="flex items-center gap-4">
               <div className="w-2 h-12 bg-blue-500 rounded-full" />
               <div>
-                <p className="text-sm font-bold text-slate-900">Auditoría UGEL</p>
-                <p className="text-xs text-slate-500">Próxima semana - Preparar documentos</p>
+                <p className="text-sm font-bold text-slate-900">Trámites activos</p>
+                <p className="text-xs text-slate-500">{stats.pending} en proceso</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="w-2 h-12 bg-emerald-500 rounded-full" />
               <div>
-                <p className="text-sm font-bold text-slate-900">Cierre de Mes</p>
-                <p className="text-xs text-slate-500">95% de trámites atendidos</p>
+                <p className="text-sm font-bold text-slate-900">Último trámite registrado</p>
+                <p className="text-xs text-slate-500">{stats.recent[0]?.asunto || 'Sin registros recientes'}</p>
               </div>
             </div>
           </div>

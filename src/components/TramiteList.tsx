@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, getDocs, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, getDocs, where, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { 
   FileText, 
   Clock, 
@@ -24,6 +24,7 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('todos');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedTramite, setSelectedTramite] = useState<any | null>(null);
   const [selectedDocuments, setSelectedDocuments] = useState<Documento[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
@@ -62,25 +63,75 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
   }, [selectedTramite]);
 
   const updateStatus = async (tramiteId: string, newStatus: string) => {
-    await updateDoc(doc(db, 'tramites', tramiteId), {
-      estado: newStatus,
-      updatedAt: new Date().toISOString()
-    });
+    const current = tramites.find(t => t.id === tramiteId);
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'tramites', tramiteId), {
+        estado: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      batch.set(doc(collection(db, 'audit_logs')), {
+        type: 'tramite_status_changed',
+        tramiteId,
+        before: { estado: current?.estado || null },
+        after: { estado: newStatus },
+        actorId: userId,
+        createdAt: serverTimestamp(),
+      });
+      await batch.commit();
+      setSelectedTramite((prev: any) => prev?.id === tramiteId ? { ...prev, estado: newStatus } : prev);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('No se pudo actualizar el estado del trámite.');
+    }
   };
 
   const assignTo = async (tramiteId: string, assignedUserId: string) => {
-    await updateDoc(doc(db, 'tramites', tramiteId), {
-      asignadoA: assignedUserId,
-      estado: 'derivado',
-      updatedAt: new Date().toISOString()
-    });
+    const current = tramites.find(t => t.id === tramiteId);
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'tramites', tramiteId), {
+        asignadoAId: assignedUserId,
+        // Al derivar, el flujo institucional considera el trámite en estado "derivado".
+        estado: 'derivado',
+        updatedAt: serverTimestamp()
+      });
+      batch.set(doc(collection(db, 'audit_logs')), {
+        type: 'tramite_assigned',
+        tramiteId,
+        before: { asignadoAId: current?.asignadoAId || null },
+        after: { asignadoAId: assignedUserId },
+        actorId: userId,
+        createdAt: serverTimestamp(),
+      });
+      await batch.commit();
+      setSelectedTramite((prev: any) => prev?.id === tramiteId ? { ...prev, asignadoAId: assignedUserId, estado: 'derivado' } : prev);
+    } catch (error) {
+      console.error('Error assigning tramite:', error);
+      alert('No se pudo derivar el trámite.');
+    }
   };
 
   const filteredTramites = tramites.filter(t => {
     if (filter === 'todos') return true;
-    if (filter === 'mis-tramites') return t.asignadoA === userId;
+    if (filter === 'mis-tramites') return t.asignadoAId === userId;
     return t.estado === filter;
+  }).filter(t => {
+    const search = searchTerm.trim().toLowerCase();
+    if (!search) return true;
+    return (
+      t.numero?.toLowerCase().includes(search) ||
+      t.asunto?.toLowerCase().includes(search) ||
+      t.solicitanteNombre?.toLowerCase().includes(search)
+    );
   });
+
+  const formatTramiteDate = (value: any) => {
+    if (!value) return 'Sin fecha';
+    if (typeof value?.toDate === 'function') return value.toDate().toLocaleString();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? 'Sin fecha' : parsed.toLocaleString();
+  };
 
   if (loading) {
     return (
@@ -114,6 +165,8 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
           <input 
             type="text" 
             placeholder="Buscar expediente..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -262,7 +315,7 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
                 </div>
 
                 <div className="pt-6 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 mb-2 italic">Última actualización: {new Date(selectedTramite.updatedAt || selectedTramite.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-slate-400 mb-2 italic">Última actualización: {formatTramiteDate(selectedTramite.updatedAt || selectedTramite.createdAt)}</p>
                 </div>
               </div>
             </div>

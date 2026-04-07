@@ -68,6 +68,12 @@ export default function MesaDePartes() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('El archivo supera el límite de 10MB.');
+      e.target.value = '';
+      return;
+    }
 
     setLoading(true);
     setAnalysis(null);
@@ -97,6 +103,7 @@ export default function MesaDePartes() {
       }
     } catch (error) {
       console.error("Upload/Analysis failed:", error);
+      alert('No se pudo cargar o analizar el archivo.');
     } finally {
       setLoading(false);
     }
@@ -148,6 +155,7 @@ export default function MesaDePartes() {
       }, 3000);
     } catch (error) {
       console.error("Error saving tramite:", error);
+      alert('No se pudo registrar el expediente.');
     } finally {
       setLoading(false);
     }
@@ -213,6 +221,7 @@ export default function MesaDePartes() {
       }, 3000);
     } catch (error) {
       console.error("Error saving FUT:", error);
+      alert('No se pudo registrar el FUT.');
     } finally {
       setLoading(false);
     }

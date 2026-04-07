@@ -2,18 +2,27 @@
  * Servicio de Almacenamiento (Storage)
  * Conectado a Cloudflare R2 a través de Vercel API
  */
+import { auth } from '../firebase';
 
 export async function uploadToR2(file: File): Promise<string> {
   try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('Debes iniciar sesión para subir archivos');
+    }
+    const token = await user.getIdToken();
+
     // 1. Solicitar una Pre-signed URL a nuestra API interna
     const response = await fetch('/api/presigned', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         fileName: file.name,
-        fileType: file.type
+        fileType: file.type,
+        fileSize: file.size,
       })
     });
 
