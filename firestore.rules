@@ -52,8 +52,11 @@ service cloud.firestore {
 
     function hasRequiredTramiteFields() {
       return request.resource.data.numero is string &&
+             request.resource.data.numero.size() > 0 &&
              request.resource.data.asunto is string &&
+             request.resource.data.asunto.size() > 0 &&
              request.resource.data.solicitanteNombre is string &&
+             request.resource.data.solicitanteNombre.size() > 0 &&
              request.resource.data.estado is string &&
              request.resource.data.createdAt != null &&
              request.resource.data.updatedAt != null;
@@ -93,8 +96,7 @@ service cloud.firestore {
       allow update: if (
         isMesaPartes() ||
         (isDocente() && (
-          resource.data.asignadoAId == request.auth.uid ||
-          request.resource.data.asignadoAId == request.auth.uid
+          resource.data.asignadoAId == request.auth.uid
         ))
       ) &&
       sameInstitution(resource.data.institucionId) &&
@@ -107,6 +109,10 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
                     request.resource.data.actorId == request.auth.uid &&
                     request.resource.data.type is string &&
+                    request.resource.data.type.size() > 0 &&
+                    request.resource.data.before is map &&
+                    request.resource.data.after is map &&
+                    request.resource.data.keys().hasOnly(['type', 'tramiteId', 'targetUserId', 'before', 'after', 'actorId', 'createdAt']) &&
                     request.resource.data.createdAt != null;
       allow update, delete: if false;
     }

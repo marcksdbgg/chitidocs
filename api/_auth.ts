@@ -19,7 +19,15 @@ interface AuthContext {
 }
 
 function getPrivateKeyFromEnv() {
-  return process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const raw = process.env.FIREBASE_PRIVATE_KEY;
+  if (!raw) {
+    return null;
+  }
+  const key = raw.replace(/\\n/g, '\n').trim();
+  if (!key.startsWith('-----BEGIN PRIVATE KEY-----')) {
+    throw new Error('FIREBASE_PRIVATE_KEY must start with -----BEGIN PRIVATE KEY----- and use escaped newlines (\\n)');
+  }
+  return key;
 }
 
 function initAdmin() {
@@ -31,7 +39,19 @@ function initAdmin() {
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = getPrivateKeyFromEnv();
 
-  if (projectId && clientEmail && privateKey) {
+  const hasAnyExplicitCredential = !!projectId || !!clientEmail || !!privateKey;
+  const hasAllExplicitCredential = !!projectId && !!clientEmail && !!privateKey;
+
+  if (hasAnyExplicitCredential && !hasAllExplicitCredential) {
+    const missing = [
+      !projectId ? 'FIREBASE_PROJECT_ID' : null,
+      !clientEmail ? 'FIREBASE_CLIENT_EMAIL' : null,
+      !privateKey ? 'FIREBASE_PRIVATE_KEY' : null,
+    ].filter(Boolean).join(', ');
+    throw new Error(`Incomplete Firebase Admin credentials. Missing: ${missing}`);
+  }
+
+  if (hasAllExplicitCredential) {
     initializeApp({
       credential: cert({
         projectId,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, getDocs, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, getDocs, where, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { 
   FileText, 
   Clock, 
@@ -64,11 +64,12 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
   const updateStatus = async (tramiteId: string, newStatus: string) => {
     const current = tramites.find(t => t.id === tramiteId);
     try {
-      await updateDoc(doc(db, 'tramites', tramiteId), {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'tramites', tramiteId), {
         estado: newStatus,
         updatedAt: serverTimestamp()
       });
-      await addDoc(collection(db, 'audit_logs'), {
+      batch.set(doc(collection(db, 'audit_logs')), {
         type: 'tramite_status_changed',
         tramiteId,
         before: { estado: current?.estado || null },
@@ -76,6 +77,7 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
         actorId: userId,
         createdAt: serverTimestamp(),
       });
+      await batch.commit();
     } catch (error) {
       console.error('Error updating status:', error);
       alert('No se pudo actualizar el estado del trámite.');
@@ -85,12 +87,14 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
   const assignTo = async (tramiteId: string, assignedUserId: string) => {
     const current = tramites.find(t => t.id === tramiteId);
     try {
-      await updateDoc(doc(db, 'tramites', tramiteId), {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'tramites', tramiteId), {
         asignadoAId: assignedUserId,
+        // Al derivar, el flujo institucional considera el trámite en estado "derivado".
         estado: 'derivado',
         updatedAt: serverTimestamp()
       });
-      await addDoc(collection(db, 'audit_logs'), {
+      batch.set(doc(collection(db, 'audit_logs')), {
         type: 'tramite_assigned',
         tramiteId,
         before: { asignadoAId: current?.asignadoAId || null },
@@ -98,6 +102,7 @@ export default function TramiteList({ userRole, userId }: { userRole: string | n
         actorId: userId,
         createdAt: serverTimestamp(),
       });
+      await batch.commit();
     } catch (error) {
       console.error('Error assigning tramite:', error);
       alert('No se pudo derivar el trámite.');

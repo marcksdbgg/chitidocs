@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, onSnapshot, doc, updateDoc, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, doc, query, orderBy, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { 
   Users, 
   Shield, 
@@ -33,8 +33,9 @@ export default function UserManagement() {
         throw new Error('Usuario no autenticado');
       }
       const previousUser = users.find(u => u.uid === uid);
-      await updateDoc(doc(db, 'users', uid), { role: newRole });
-      await addDoc(collection(db, 'audit_logs'), {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'users', uid), { role: newRole });
+      batch.set(doc(collection(db, 'audit_logs')), {
         type: 'user_role_changed',
         targetUserId: uid,
         before: { role: previousUser?.role || null },
@@ -42,6 +43,7 @@ export default function UserManagement() {
         actorId: auth.currentUser.uid,
         createdAt: serverTimestamp(),
       });
+      await batch.commit();
     } catch (error) {
       console.error("Error updating role:", error);
       alert('No se pudo actualizar el rol del usuario.');

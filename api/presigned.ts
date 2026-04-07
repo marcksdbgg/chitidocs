@@ -24,7 +24,7 @@ export default async function handler(req: Request) {
 
     const maxSize = 10 * 1024 * 1024;
     if (fileSize <= 0 || fileSize > maxSize) {
-      return jsonError('File exceeds maximum size of 10MB', 400);
+      return jsonError('Invalid file size. Must be between 1 byte and 10MB', 400);
     }
 
     const allowedMimeTypes = new Set([
@@ -66,9 +66,9 @@ export default async function handler(req: Request) {
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 60 });
 
     // Construir la URL pública (usando el dominio personalizado o de R2)
-    const publicBaseUrl = process.env.R2_PUBLIC_URL || process.env.VITE_R2_PUBLIC_URL;
+    const publicBaseUrl = process.env.R2_PUBLIC_URL;
     if (!publicBaseUrl) {
-      return jsonError('Server public URL is not configured', 500);
+      return jsonError('Storage service is not properly configured', 500);
     }
     const publicUrl = `${publicBaseUrl}/${key}`;
 
