@@ -1,6 +1,7 @@
 import { FirebaseOptions, getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import appletFirebaseConfig from '../firebase-applet-config.json';
 import baseFirebaseConfig from '../firebase.web.config.json';
 
 const firebaseConfig: FirebaseOptions = {
@@ -12,7 +13,8 @@ const firebaseConfig: FirebaseOptions = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || baseFirebaseConfig.appId,
 };
 
-const firestoreDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID?.trim();
+const firestoreDatabaseId =
+  import.meta.env.VITE_FIREBASE_DATABASE_ID?.trim() || appletFirebaseConfig.firestoreDatabaseId?.trim();
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
