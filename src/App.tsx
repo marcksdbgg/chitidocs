@@ -61,31 +61,39 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        // Get or create user profile
-        const userRef = doc(db, 'users', currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (!userSnap.exists()) {
-          const defaultRole = currentUser.email === 'mark.romero.dev@gmail.com' ? 'director' : 'auditor';
-          const newUser = {
-            uid: currentUser.uid,
-            email: currentUser.email,
-            displayName: currentUser.displayName,
-            role: defaultRole,
-            photoURL: currentUser.photoURL
-          };
-          await setDoc(userRef, newUser);
-          setUserRole(defaultRole);
+      try {
+        if (currentUser) {
+          // Get or create user profile
+          const userRef = doc(db, 'users', currentUser.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (!userSnap.exists()) {
+            const defaultRole = currentUser.email === 'mark.romero.dev@gmail.com' ? 'director' : 'auditor';
+            const newUser = {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              displayName: currentUser.displayName,
+              role: defaultRole,
+              photoURL: currentUser.photoURL,
+            };
+            await setDoc(userRef, newUser);
+            setUserRole(defaultRole);
+          } else {
+            setUserRole(userSnap.data().role);
+          }
+          setUser(currentUser);
         } else {
-          setUserRole(userSnap.data().role);
+          setUser(null);
+          setUserRole(null);
         }
+      } catch (error) {
+        console.error('Auth profile sync failed:', error);
+        setAuthError('La sesión inició, pero no se pudo cargar tu perfil en Firestore. Revisa las reglas de seguridad o la configuración de la base de datos.');
         setUser(currentUser);
-      } else {
-        setUser(null);
         setUserRole(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
